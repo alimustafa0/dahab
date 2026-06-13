@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import GoldQuote, FxRate, LocalMarketPrice, DailyObservation
+from .models import GoldQuote, FxRate, LocalMarketPrice, DailyObservation, ApiCallLog
 
 
 @admin.register(GoldQuote)
@@ -33,3 +33,11 @@ class DailyObservationAdmin(admin.ModelAdmin):
     list_filter = ("is_interpolated",)
     date_hierarchy = "obs_date"
     ordering = ("-obs_date",)
+
+
+@admin.register(ApiCallLog)
+class ApiCallLogAdmin(admin.ModelAdmin):
+    list_display = ("created_at", "endpoint", "status", "detail")
+    list_filter = ("status", "endpoint")
+    date_hierarchy = "created_at"
+    ordering = ("-created_at",)

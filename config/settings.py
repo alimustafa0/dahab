@@ -10,11 +10,15 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
+
+from dotenv import load_dotenv
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+load_dotenv(BASE_DIR / ".env")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
@@ -117,3 +121,11 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# --- Dahab / GoldAPI configuration ---
+GOLDAPI_KEY = os.environ.get("GOLDAPI_KEY", "")
+GOLDAPI_BASE_URL = "https://www.goldapi.io/api"
+
+# Free-tier protection (limit is ~100 calls/month)
+GOLDAPI_MONTHLY_CALL_BUDGET = 90   # ingest refuses to call beyond this many per month
+GOLDAPI_CACHE_TTL_HOURS = 10       # skip a fetch if the last one is younger than this

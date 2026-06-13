@@ -149,3 +149,17 @@ class DailyObservation(models.Model):
 
     def __str__(self):
         return f"Obs {self.obs_date}: fair 21K = {self.fair_egp_gram_21k} EGP/g"
+    
+class ApiCallLog(models.Model):
+    """One row per GoldAPI request, so the monthly budget guard counts real calls."""
+
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    endpoint = models.CharField(max_length=64, help_text='e.g. "XAU/EGP".')
+    status = models.CharField(max_length=16, help_text='"OK" or "ERROR".')
+    detail = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+
+    def __str__(self):
+        return f"{self.endpoint} [{self.status}] {self.created_at:%Y-%m-%d %H:%M}"
