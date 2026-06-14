@@ -1,38 +1,80 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <h1>Dahab — Egyptian Gold Price &amp; Forecast</h1>
-  <p class="muted">21-karat gold (عيار 21) · prices in EGP per gram</p>
+  <h1>{{ t.title }}</h1>
+  <p class="muted">{{ t.subtitle }}</p>
 
   {% if latest_quote %}
     <div class="card">
-      <div class="muted">Current 21K price · {{ latest_quote.quote_date }}</div>
+      <div class="muted">{{ t.todays_prices }} · {{ latest_quote.quote_date }}</div>
       <div class="price">{{ latest_quote.price_gram_21k|floatformat:2 }}
-        <span style="font-size:1rem; color:var(--muted);">EGP/g</span></div>
-      <div class="muted">
-        Spot {{ latest_quote.price_per_oz|floatformat:2 }} EGP/oz ·
-        24K {{ latest_quote.price_gram_24k|floatformat:2 }} ·
-        18K {{ latest_quote.price_gram_18k|floatformat:2 }}
-      </div>
+        <span style="font-size:1rem; color:var(--muted);">EGP/g · 21K · {{ t.fair_value }}</span></div>
+
+      <table style="margin-top:12px;">
+        <thead><tr><th>{{ t.karat }}</th><th>{{ t.egp_per_gram }}</th></tr></thead>
+        <tbody>
+          <tr><td>24K (999)</td><td>{{ latest_quote.price_gram_24k|floatformat:2 }}</td></tr>
+          <tr><td>22K (916)</td><td>{{ latest_quote.price_gram_22k|floatformat:2 }}</td></tr>
+          <tr><td>21K (875)</td><td>{{ latest_quote.price_gram_21k|floatformat:2 }}</td></tr>
+          <tr><td>18K (750)</td><td>{{ latest_quote.price_gram_18k|floatformat:2 }}</td></tr>
+        </tbody>
+      </table>
+
+      {% if gold_pound %}
+        <div class="muted" style="margin-top:12px;">
+          {{ t.gold_pound }}:
+          <span style="color:var(--gold); font-weight:600;">{{ gold_pound|floatformat:2 }} EGP</span>
+        </div>
+      {% endif %}
+
+      {% if local_price %}
+        <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--line);">
+          <span class="muted">{{ t.local_market }} · {{ premium_date }}:</span>
+          <span style="color:var(--gold); font-weight:600;">{{ local_price|floatformat:2 }} EGP/g</span>
+          <span class="muted">· {{ t.premium }} {{ premium_str }}</span>
+        </div>
+      {% endif %}
     </div>
   {% else %}
-    <div class="card muted">No price data yet — run <code>python manage.py fetch_gold_quote</code>.</div>
+    <div class="card muted">{{ t.no_price }}</div>
   {% endif %}
 
   <div class="card">
-    <div class="muted" style="margin-bottom:10px;">Price history &amp; forecast (21K, EGP/g)</div>
+    <div class="muted" style="margin-bottom:10px;">{{ t.calc_title }}</div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(110px, 1fr)); gap:10px;">
+      <label>{{ t.karat }}
+        <select id="calc-karat">
+          <option value="24">24K</option>
+          <option value="22">22K</option>
+          <option value="21" selected>21K</option>
+          <option value="18">18K</option>
+        </select>
+      </label>
+      <label>{{ t.weight_g }}
+        <input id="calc-weight" type="number" min="0" step="0.1" value="10">
+      </label>
+      <label>{{ t.making_per_gram }}
+        <input id="calc-making" type="number" min="0" step="1" value="50">
+      </label>
+    </div>
+    <div id="calc-result" style="margin-top:14px;"></div>
+    <div class="muted" style="margin-top:8px; font-size:.8rem;">{{ t.calc_note }}</div>
+  </div>
+
+  <div class="card">
+    <div class="muted" style="margin-bottom:10px;">{{ t.chart_title }}</div>
     <canvas id="chart" height="120"></canvas>
   </div>
 
   <div class="card">
     <div class="muted" style="margin-bottom:6px;">
-      Forecast detail{% if active_run %} · {{ active_run.get_model_type_display }} ·
-      30-day MAPE {{ active_run.mape|floatformat:1 }}%{% endif %}
+      {{ t.forecast_detail }}{% if active_run %} · {{ t.model }}: {{ active_run.get_model_type_display }} ·
+      {{ t.mape_30d }} {{ active_run.mape|floatformat:1 }}%{% endif %}
     </div>
     {% if predictions %}
       <table>
         <thead>
-          <tr><th>Horizon</th><th>Target date</th><th>Predicted</th><th>Range (5–95%)</th></tr>
+          <tr><th>{{ t.horizon }}</th><th>{{ t.target_date }}</th><th>{{ t.predicted }}</th><th>{{ t.range }}</th></tr>
         </thead>
         <tbody>
           {% for p in predictions %}
@@ -46,33 +88,79 @@
         </tbody>
       </table>
     {% else %}
-      <div class="muted">No forecast yet — run <code>python manage.py run_forecast</code>.</div>
+      <div class="muted">{{ t.no_forecast }}</div>
     {% endif %}
   </div>
 
-  <p class="muted" style="margin-top:18px; line-height:1.5;">
-    Forecasts estimate <em>fair value</em> (global spot × USD/EGP × 21K purity) and are not
-    financial advice. The shaded band is a 5–95% range from the Monte Carlo simulation — it
-    cannot anticipate currency devaluations or shifts in the local market premium.
-  </p>
+  <div class="card">
+    <div class="muted" style="margin-bottom:6px;">
+      {{ t.accuracy_title }}{% if accuracy_mae is not None %} · {{ t.avg_error }} {{ accuracy_mae|floatformat:2 }}% · {{ accuracy_n }} {{ t.matured }}{% endif %}
+    </div>
+    {% if accuracy_rows %}
+      <table>
+        <thead>
+          <tr><th>{{ t.target_date }}</th><th>{{ t.horizon }}</th><th>{{ t.predicted }}</th><th>{{ t.realized }}</th><th>{{ t.error }}</th></tr>
+        </thead>
+        <tbody>
+          {% for r in accuracy_rows %}
+            <tr>
+              <td>{{ r.target_date }}</td>
+              <td>+{{ r.horizon_days }}d</td>
+              <td>{{ r.predicted|floatformat:2 }}</td>
+              <td>{{ r.actual|floatformat:2 }}</td>
+              <td class="band">{{ r.error_pct|floatformat:2 }}%</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="muted">{{ t.no_accuracy }}</div>
+    {% endif %}
+  </div>
 
+  <p class="muted" style="margin-top:18px; line-height:1.5;">{{ t.disclaimer }}</p>
+
+  {{ karat_prices|json_script:"karat-prices" }}
   {{ chart|json_script:"chart-data" }}
+  {{ t|json_script:"t-strings" }}
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script>
+    const T = JSON.parse(document.getElementById('t-strings').textContent);
+
+    // --- Making-charges calculator ---
+    const kPrices = JSON.parse(document.getElementById('karat-prices').textContent);
+    const karatEl = document.getElementById('calc-karat');
+    const weightEl = document.getElementById('calc-weight');
+    const makingEl = document.getElementById('calc-making');
+    const resultEl = document.getElementById('calc-result');
+    const fmt = n => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    function calc() {
+      const gram = kPrices[karatEl.value] || 0;
+      const weight = parseFloat(weightEl.value) || 0;
+      const making = parseFloat(makingEl.value) || 0;
+      const goldValue = gram * weight;
+      const makingTotal = making * weight;
+      resultEl.innerHTML =
+        `<div class="muted">${T.gold_value}: ${fmt(goldValue)} EGP &nbsp;·&nbsp; ${T.making}: ${fmt(makingTotal)} EGP</div>` +
+        `<div style="font-size:1.6rem; font-weight:700; color:var(--gold); margin-top:4px;">${fmt(goldValue + makingTotal)} EGP</div>`;
+    }
+    [karatEl, weightEl, makingEl].forEach(el => el.addEventListener('input', calc));
+    calc();
+
+    // --- History + forecast chart ---
     const data = JSON.parse(document.getElementById('chart-data').textContent);
     const fc = data.forecast || [];
     const nHist = data.labels.length;
-
     const labels = data.labels.concat(fc.map(p => p.date));
     const prefix = Array(Math.max(nHist - 1, 0)).fill(null);
     const anchor = data.values.length ? data.values[data.values.length - 1] : null;
-
     const histData = data.values.concat(fc.map(() => null));
     const median = prefix.concat([anchor], fc.map(p => p.median));
     const upper  = prefix.concat([anchor], fc.map(p => p.upper));
     const lower  = prefix.concat([anchor], fc.map(p => p.lower));
-
     const gold = '#d4af37';
+
     new Chart(document.getElementById('chart'), {
       type: 'line',
       data: {
@@ -81,9 +169,9 @@
           { data: lower, borderColor: 'transparent', pointRadius: 0, fill: false },
           { data: upper, borderColor: 'transparent', pointRadius: 0, fill: '-1',
             backgroundColor: 'rgba(212,175,55,0.12)' },
-          { label: 'History', data: histData, borderColor: gold,
+          { label: T.history, data: histData, borderColor: gold,
             borderWidth: 1.5, pointRadius: 0, tension: 0.15, fill: false },
-          { label: 'Forecast (median)', data: median, borderColor: gold,
+          { label: T.forecast_median, data: median, borderColor: gold,
             borderWidth: 1.5, borderDash: [6, 4], pointRadius: 2, fill: false },
         ],
       },

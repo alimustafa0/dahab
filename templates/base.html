@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ lang|default:'en' }}" dir="{{ t.dir|default:'ltr' }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Dahab — Egyptian Gold{% endblock %}</title>
+  <title>{{ t.title|default:"Dahab — Egyptian Gold" }}</title>
   <style>
     :root { --bg:#0f1115; --card:#1a1d24; --ink:#e8eaed; --muted:#9aa0a6; --gold:#d4af37; --line:#2a2e37; }
     * { box-sizing: border-box; }
@@ -16,15 +16,24 @@
             padding:20px; margin-top:18px; }
     .price { font-size: 2.6rem; font-weight: 700; color: var(--gold); }
     table { width:100%; border-collapse: collapse; margin-top: 8px; }
-    th, td { text-align:left; padding:10px 8px; border-bottom:1px solid var(--line);
+    th, td { text-align:start; padding:10px 8px; border-bottom:1px solid var(--line);
              font-variant-numeric: tabular-nums; }
     th { color: var(--muted); font-weight:600; font-size:.85rem; }
     .band { color: var(--muted); font-size:.85rem; }
     code { background:#0b0d11; padding:2px 6px; border-radius:6px; }
+    label { display:flex; flex-direction:column; gap:4px; font-size:.8rem; color:var(--muted); }
+    input, select { background:#0b0d11; color:var(--ink); border:1px solid var(--line);
+                    border-radius:8px; padding:8px 10px; font-size:.95rem; }
+    input:focus, select:focus { outline:none; border-color:var(--gold); }
+    a.lang { color:var(--muted); text-decoration:none; font-size:.85rem; }
+    a.lang:hover { color:var(--ink); }
   </style>
 </head>
 <body>
   <div class="wrap">
+    <div style="text-align:end; margin-bottom:8px;">
+      <a class="lang" href="?lang={{ toggle_lang }}">{{ t.lang_toggle|default:"العربية" }}</a>
+    </div>
     {% block content %}{% endblock %}
   </div>
 </body>

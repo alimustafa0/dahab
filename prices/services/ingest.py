@@ -129,3 +129,28 @@ def build_daily_observation(obs_date, fx_rate=None):
         },
     )
     return obs
+
+
+def refresh_premium(obs_date):
+    """
+    Attach the real local retail price + premium to an existing DailyObservation.
+    Works for any date that already has a fair value (seeded or live), since it
+    reads the stored fair rather than recomputing it. Returns the observation.
+    """
+    obs = DailyObservation.objects.filter(obs_date=obs_date).first()
+    if not obs:
+        return None
+    local = (
+        LocalMarketPrice.objects.filter(price_date=obs_date, karat=Karat.K21)
+        .order_by("-created_at")
+        .first()
+    )
+    if not local:
+        return obs
+    obs.actual_egp_gram_21k = local.price_egp_per_gram
+    if obs.fair_egp_gram_21k:
+        obs.premium_pct = (
+            local.price_egp_per_gram / obs.fair_egp_gram_21k - 1
+        ).quantize(Decimal("0.0001"))
+    obs.save(update_fields=["actual_egp_gram_21k", "premium_pct"])
+    return obs

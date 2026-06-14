@@ -21,6 +21,15 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(
             f"Created {run} with {run.predictions.count()} predictions:"
         ))
+
+        prem = run.params.get("premium_pct", 0.0)
+        if prem:
+            self.stdout.write(
+                f"Local premium applied: {prem * 100:.2f}% — forecasts are actual market price."
+            )
+        else:
+            self.stdout.write("No local premium yet — forecasts are fair value.")
+
         for p in run.predictions.order_by("horizon_days"):
             self.stdout.write(
                 f"  +{p.horizon_days}d ({p.target_date}): "
