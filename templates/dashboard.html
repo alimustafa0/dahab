@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>Dahab — Egyptian Gold Price &amp; Forecast</h1>
+  <p class="muted">21-karat gold (عيار 21) · prices in EGP per gram</p>
+
+  {% if latest_quote %}
+    <div class="card">
+      <div class="muted">Current 21K price · {{ latest_quote.quote_date }}</div>
+      <div class="price">{{ latest_quote.price_gram_21k|floatformat:2 }}
+        <span style="font-size:1rem; color:var(--muted);">EGP/g</span></div>
+      <div class="muted">
+        Spot {{ latest_quote.price_per_oz|floatformat:2 }} EGP/oz ·
+        24K {{ latest_quote.price_gram_24k|floatformat:2 }} ·
+        18K {{ latest_quote.price_gram_18k|floatformat:2 }}
+      </div>
+    </div>
+  {% else %}
+    <div class="card muted">No price data yet — run <code>python manage.py fetch_gold_quote</code>.</div>
+  {% endif %}
+
+  <div class="card">
+    <div class="muted" style="margin-bottom:10px;">Price history &amp; forecast (21K, EGP/g)</div>
+    <canvas id="chart" height="120"></canvas>
+  </div>
+
+  <div class="card">
+    <div class="muted" style="margin-bottom:6px;">
+      Forecast detail{% if active_run %} · {{ active_run.get_model_type_display }} ·
+      30-day MAPE {{ active_run.mape|floatformat:1 }}%{% endif %}
+    </div>
+    {% if predictions %}
+      <table>
+        <thead>
+          <tr><th>Horizon</th><th>Target date</th><th>Predicted</th><th>Range (5–95%)</th></tr>
+        </thead>
+        <tbody>
+          {% for p in predictions %}
+            <tr>
+              <td>+{{ p.horizon_days }}d</td>
+              <td>{{ p.target_date }}</td>
+              <td>{{ p.predicted_egp_per_gram|floatformat:2 }}</td>
+              <td class="band">{{ p.lower_bound|floatformat:2 }} – {{ p.upper_bound|floatformat:2 }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="muted">No forecast yet — run <code>python manage.py run_forecast</code>.</div>
+    {% endif %}
+  </div>
+
+  <p class="muted" style="margin-top:18px; line-height:1.5;">
+    Forecasts estimate <em>fair value</em> (global spot × USD/EGP × 21K purity) and are not
+    financial advice. The shaded band is a 5–95% range from the Monte Carlo simulation — it
+    cannot anticipate currency devaluations or shifts in the local market premium.
+  </p>
+
+  {{ chart|json_script:"chart-data" }}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script>
+    const data = JSON.parse(document.getElementById('chart-data').textContent);
+    const fc = data.forecast || [];
+    const nHist = data.labels.length;
+
+    const labels = data.labels.concat(fc.map(p => p.date));
+    const prefix = Array(Math.max(nHist - 1, 0)).fill(null);
+    const anchor = data.values.length ? data.values[data.values.length - 1] : null;
+
+    const histData = data.values.concat(fc.map(() => null));
+    const median = prefix.concat([anchor], fc.map(p => p.median));
+    const upper  = prefix.concat([anchor], fc.map(p => p.upper));
+    const lower  = prefix.concat([anchor], fc.map(p => p.lower));
+
+    const gold = '#d4af37';
+    new Chart(document.getElementById('chart'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          { data: lower, borderColor: 'transparent', pointRadius: 0, fill: false },
+          { data: upper, borderColor: 'transparent', pointRadius: 0, fill: '-1',
+            backgroundColor: 'rgba(212,175,55,0.12)' },
+          { label: 'History', data: histData, borderColor: gold,
+            borderWidth: 1.5, pointRadius: 0, tension: 0.15, fill: false },
+          { label: 'Forecast (median)', data: median, borderColor: gold,
+            borderWidth: 1.5, borderDash: [6, 4], pointRadius: 2, fill: false },
+        ],
+      },
+      options: {
+        responsive: true,
+        interaction: { intersect: false, mode: 'index' },
+        plugins: { legend: { labels: { color: '#9aa0a6', filter: item => item.text } } },
+        scales: {
+          x: { ticks: { color: '#9aa0a6', maxTicksLimit: 8 }, grid: { color: '#2a2e37' } },
+          y: { ticks: { color: '#9aa0a6' }, grid: { color: '#2a2e37' } },
+        },
+      },
+    });
+  </script>
+{% endblock %}
