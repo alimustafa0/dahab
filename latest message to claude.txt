@@ -1,0 +1,6 @@
+(.venv) D:\Works\Ali\Dahab>python manage.py run_forecast
+Created Hybrid (spot × FX × premium) @ 2026-06-13 (MAPE None) with 4 predictions:
+  +1d (2026-06-15): 6153.10  [5973.44 - 6343.24]
+  +7d (2026-06-23): 6196.22  [5718.27 - 6712.23]
+  +30d (2026-07-24): 6358.60  [5392.83 - 7504.30]
+  +90d (2026-10-16): 6838.74  [5127.84 - 9105.95]
