@@ -46,15 +46,21 @@ def backfill_actuals(today=None):
 
 def accuracy_summary(limit=20):
     """
-    Recent matured predictions (newest first) plus the mean absolute % error.
-    Returns (rows, mae_pct, n).
+    Recent matured predictions (newest first), de-duplicated to one row per
+    (target_date, horizon) — the most recently generated prediction for each — plus
+    the mean absolute % error. The full prediction history stays in the database;
+    this only tidies the display. Returns (rows, mae_pct, n).
     """
     qs = (
         Prediction.objects.filter(actual_egp_per_gram__isnull=False)
-        .order_by("-target_date")[:limit]
+        .order_by("-target_date", "-generated_at")
     )
-    rows, errs = [], []
+    rows, errs, seen = [], [], set()
     for p in qs:
+        key = (p.target_date, p.horizon_days)
+        if key in seen:
+            continue
+        seen.add(key)
         predicted = float(p.predicted_egp_per_gram)
         actual = float(p.actual_egp_per_gram)
         err = (predicted - actual) / actual * 100.0 if actual else None
@@ -67,5 +73,7 @@ def accuracy_summary(limit=20):
             "actual": actual,
             "error_pct": err,
         })
+        if len(rows) >= limit:
+            break
     mae_pct = sum(errs) / len(errs) if errs else None
     return rows, mae_pct, len(errs)
